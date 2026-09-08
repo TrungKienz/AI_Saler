@@ -14,6 +14,7 @@ export async function updateConfig(data: Partial<{
   bankId: string | null;
   bankAccountNo: string | null;
   bankAccountName: string | null;
+  sepayVaNumber: string | null;
   usdtAddress: string | null;
   usdtNetwork: string | null;
   sourceApiKeyOverride: string | null;

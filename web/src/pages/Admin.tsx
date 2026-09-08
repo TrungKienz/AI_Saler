@@ -392,21 +392,29 @@ function SettingsTab() {
       </div>
 
       <div className="card p-6">
-        <h2 className="mb-4 font-semibold text-white">Nạp tiền qua VietQR</h2>
+        <h2 className="mb-4 font-semibold text-white">Nạp tiền qua VietQR (SePay tài khoản phụ)</h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Mã BIN ngân hàng</label>
-            <input className="input" value={config.bankId ?? ""} onChange={(e) => set("bankId", e.target.value || null)} placeholder="vd: 970436" />
+            <label className="label">Tên ngân hàng</label>
+            <input className="input" value={config.bankId ?? ""} onChange={(e) => set("bankId", e.target.value || null)} placeholder="vd: VietinBank" />
           </div>
           <div>
-            <label className="label">Số tài khoản</label>
-            <input className="input" value={config.bankAccountNo ?? ""} onChange={(e) => set("bankAccountNo", e.target.value || null)} />
+            <label className="label">Số tài khoản nhận tiền</label>
+            <input className="input" value={config.bankAccountNo ?? ""} onChange={(e) => set("bankAccountNo", e.target.value || null)} placeholder="vd: 109869589431" />
           </div>
-          <div className="col-span-2">
-            <label className="label">Tên chủ tài khoản</label>
+          <div>
+            <label className="label">Số tài khoản phụ (VA)</label>
+            <input className="input" value={config.sepayVaNumber ?? ""} onChange={(e) => set("sepayVaNumber", e.target.value || null)} placeholder="vd: BTK" />
+          </div>
+          <div>
+            <label className="label">Tên chủ tài khoản (hiển thị, tuỳ chọn)</label>
             <input className="input" value={config.bankAccountName ?? ""} onChange={(e) => set("bankAccountName", e.target.value || null)} />
           </div>
         </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Lấy 3 giá trị trên từ trang cấu hình Tài khoản phụ trên SePay (qr.sepay.vn). Nội dung chuyển khoản sẽ tự động
+          tạo theo đúng chuẩn SePay: <code>SEVQR TKP&lt;Số VA&gt; &lt;mã đơn&gt;</code>.
+        </p>
 
         <h2 className="mb-4 mt-6 font-semibold text-white">Tự động xác nhận (SePay webhook)</h2>
         <label className="label">Webhook URL (khai báo trong dashboard SePay)</label>

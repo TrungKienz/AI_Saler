@@ -59,9 +59,10 @@ model User {
 model Config {
   id                  Int     @id @default(1)
   globalMarginPercent Float   @default(15)
-  bankId              String? // VietQR bank BIN, e.g. "970436"
-  bankAccountNo       String?
+  bankId              String? // Bank short name for SePay's VietQR proxy, e.g. "VietinBank"
+  bankAccountNo       String? // SePay virtual-account receiving account number
   bankAccountName     String?
+  sepayVaNumber       String? // SePay "tài khoản phụ" (VA) identifier appended to transfer content as TKP<this>, required for SePay to auto-detect the transaction
   usdtAddress         String?
   usdtNetwork         String? @default("BEP20")
   sourceApiKeyOverride String? // optional override of SOURCE_API_KEY env var
