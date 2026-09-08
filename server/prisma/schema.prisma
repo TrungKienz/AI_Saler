@@ -33,6 +33,7 @@ enum OrderStatus {
 enum MarginType {
   PERCENT
   FIXED_USD
+  FIXED_VND
 }
 
 enum ConfirmSource {

@@ -240,7 +240,7 @@ function ProductsTab() {
     }
   }
 
-  async function saveMargin(id: string, type: "PERCENT" | "FIXED_USD", value: number) {
+  async function saveMargin(id: string, type: "PERCENT" | "FIXED_USD" | "FIXED_VND", value: number) {
     await api.put(`/api/admin/products/${id}/margin`, { type, value });
     await load();
   }
@@ -252,6 +252,11 @@ function ProductsTab() {
 
   async function toggleHot(id: string, isHot: boolean) {
     await api.put(`/api/admin/products/${id}/hot`, { isHot });
+    await load();
+  }
+
+  async function toggleActive(id: string, isActive: boolean) {
+    await api.put(`/api/admin/products/${id}/active`, { isActive });
     await load();
   }
 
@@ -271,12 +276,20 @@ function ProductsTab() {
               <th className="px-4 py-3">Giá bán</th>
               <th className="px-4 py-3">Override margin</th>
               <th className="px-4 py-3">HOT</th>
+              <th className="px-4 py-3">Hiển thị</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {products.map((p) => (
-              <ProductRow key={p.id} product={p} onSave={saveMargin} onClear={clearMargin} onToggleHot={toggleHot} />
+              <ProductRow
+                key={p.id}
+                product={p}
+                onSave={saveMargin}
+                onClear={clearMargin}
+                onToggleHot={toggleHot}
+                onToggleActive={toggleActive}
+              />
             ))}
           </tbody>
         </table>
@@ -290,19 +303,22 @@ function ProductRow({
   onSave,
   onClear,
   onToggleHot,
+  onToggleActive,
 }: {
   product: any;
-  onSave: (id: string, type: "PERCENT" | "FIXED_USD", value: number) => Promise<void>;
+  onSave: (id: string, type: "PERCENT" | "FIXED_USD" | "FIXED_VND", value: number) => Promise<void>;
   onClear: (id: string) => Promise<void>;
   onToggleHot: (id: string, isHot: boolean) => Promise<void>;
+  onToggleActive: (id: string, isActive: boolean) => Promise<void>;
 }) {
-  const [type, setType] = useState<"PERCENT" | "FIXED_USD">(product.marginOverride?.type ?? "PERCENT");
+  const [type, setType] = useState<"PERCENT" | "FIXED_USD" | "FIXED_VND">(product.marginOverride?.type ?? "PERCENT");
   const [value, setValue] = useState<string>(product.marginOverride?.value?.toString() ?? "");
   const [saving, setSaving] = useState(false);
   const [hotSaving, setHotSaving] = useState(false);
+  const [activeSaving, setActiveSaving] = useState(false);
 
   return (
-    <tr>
+    <tr className={product.isActive === false ? "opacity-50" : ""}>
       <td className="px-4 py-3 text-slate-100">{product.name}</td>
       <td className="px-4 py-3 text-slate-400">{product.basePriceVnd.toLocaleString("vi-VN")}đ</td>
       <td className="px-4 py-3 font-semibold text-brand-400">{product.sellPriceVnd.toLocaleString("vi-VN")}đ</td>
@@ -311,6 +327,7 @@ function ProductRow({
           <select className="input !w-auto !py-1.5" value={type} onChange={(e) => setType(e.target.value as any)}>
             <option value="PERCENT">%</option>
             <option value="FIXED_USD">+ USD</option>
+            <option value="FIXED_VND">+ VND</option>
           </select>
           <input
             className="input !w-24 !py-1.5"
@@ -334,6 +351,23 @@ function ProductRow({
           }}
         >
           {product.isHot ? "🔥 HOT" : "Đặt HOT"}
+        </button>
+      </td>
+      <td className="px-4 py-3">
+        <button
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+            product.isActive === false
+              ? "bg-slate-800 text-slate-400 hover:bg-slate-700"
+              : "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+          }`}
+          disabled={activeSaving}
+          onClick={async () => {
+            setActiveSaving(true);
+            await onToggleActive(product.id, product.isActive === false);
+            setActiveSaving(false);
+          }}
+        >
+          {product.isActive === false ? "🙈 Đang ẩn" : "👁 Đang hiện"}
         </button>
       </td>
       <td className="px-4 py-3">
