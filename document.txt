@@ -1,0 +1,133 @@
+Shop Bot API Documentation
+API bên ngoài dùng cho flow ví: xem sản phẩm, xem số dư, tạo yêu cầu nạp tiền vào ví, rồi mua sản phẩm bằng số dư ví.
+
+Base URL:
+
+https://tunvnmmo.duckdns.org
+Authentication
+Các endpoint tài khoản/giao dịch cần API key.
+
+X-API-Key: YOUR_API_KEY
+Endpoint public:
+
+GET /
+GET /api
+GET /api/docs
+GET /api/rate
+1. Lấy danh sách sản phẩm
+GET /api/products
+
+curl -H "X-API-Key: YOUR_API_KEY" \
+  https://tunvnmmo.duckdns.org/api/products
+2. Xem số dư ví
+GET /api/balance
+
+curl -H "X-API-Key: YOUR_API_KEY" \
+  https://tunvnmmo.duckdns.org/api/balance
+3. Lấy tỷ giá
+GET /api/rate
+
+curl https://tunvnmmo.duckdns.org/api/rate
+4. Tạo yêu cầu nạp tiền vào ví
+POST /api/deposit
+
+{
+    "amount": 10,
+    "currency": "usdt"
+}
+currency chỉ nhận usdt. Nạp ví qua API không hỗ trợ VNĐ.
+
+curl -X POST \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 10, "currency": "usdt"}' \
+  https://tunvnmmo.duckdns.org/api/deposit
+Sau khi khách thanh toán đúng thông tin trả về, hệ thống tự phát hiện và cộng tiền vào ví.
+
+Nếu nạp qua ví BEP20, khách phải gửi đúng wallet_transfer.exact_amount vào địa chỉ wallet_transfer.address. Ví dụ yêu cầu nạp 10 USDT có thể trả về exact_amount: 10.1234; lúc đó khách phải chuyển đúng 10.1234 USDT để hệ thống tự khớp giao dịch.
+
+Response mẫu:
+
+{
+    "success": true,
+    "deposit": {
+        "id": 123,
+        "payment_code": "API123456789",
+        "status": "pending",
+        "amount_usdt": 10,
+        "amount_vnd_equivalent": 250000,
+        "expires_in_minutes": 10,
+        "wallet_transfer": {
+            "address": "YOUR_USDT_WALLET",
+            "network": "BEP20",
+            "exact_amount": 10.1234,
+            "instruction": "Send EXACTLY 10.1234 USDT via BEP20 network"
+        }
+    },
+    "status_endpoint": "/api/deposit/status?code=API123456789",
+    "note": "Payment will be auto-detected within 1-2 minutes. Balance will be credited automatically."
+}
+4.1. Kiểm tra nạp tiền đã thành công chưa
+GET /api/deposit/status?code=PAYMENT_CODE
+
+Endpoint tạo nạp tiền chỉ trả pending vì lúc đó khách chưa thanh toán. Sau khi khách chuyển khoản, gọi endpoint này để biết giao dịch đã được hệ thống xác nhận và cộng vào ví chưa.
+
+curl -H "X-API-Key: YOUR_API_KEY" \
+  "https://tunvnmmo.duckdns.org/api/deposit/status?code=API123456789"
+Response khi chưa thấy tiền:
+
+{
+    "success": true,
+    "deposit": {
+        "id": 123,
+        "currency": "usdt",
+        "amount": 10,
+        "payment_code": "API123456789",
+        "status": "pending",
+        "balance_vnd": 0,
+        "balance_usdt": 0
+    },
+    "paid": false,
+    "message": "Deposit is not confirmed yet. Please pay exactly as instructed and check again."
+}
+Response khi nạp thành công:
+
+{
+    "success": true,
+    "deposit": {
+        "id": 123,
+        "currency": "usdt",
+        "amount": 10,
+        "payment_code": "API123456789",
+        "status": "confirmed",
+        "balance_vnd": 0,
+        "balance_usdt": 10
+    },
+    "paid": true,
+    "message": "Deposit confirmed and wallet balance was updated."
+}
+5. Mua sản phẩm bằng số dư ví
+POST /api/buy
+
+{
+    "product_id": 85,
+    "quantity": 1,
+    "currency": "vnd"
+}
+currency nhận vnd hoặc usdt. Endpoint này chỉ trừ số dư ví đã có, không tạo thanh toán trực tiếp.
+
+curl -X POST \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": 85, "quantity": 1, "currency": "vnd"}' \
+  https://tunvnmmo.duckdns.org/api/buy
+6. Lịch sử đơn hàng
+GET /api/orders
+
+curl -H "X-API-Key: YOUR_API_KEY" \
+  https://tunvnmmo.duckdns.org/api/orders
+Security / Limits
+Sai API key 5 lần / 60s sẽ bị block tạm thời.
+Body request tối đa 64KB.
+USDT deposit tối thiểu 1 USDT.
+Mua tối đa 100 sản phẩm mỗi request.

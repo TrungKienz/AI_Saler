@@ -1,0 +1,154 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum DepositMethod {
+  VIETQR
+  USDT
+}
+
+enum DepositStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum MarginType {
+  PERCENT
+  FIXED_USD
+}
+
+enum ConfirmSource {
+  ADMIN
+  WEBHOOK
+}
+
+model User {
+  id               String    @id @default(cuid())
+  email            String?   @unique
+  passwordHash     String?
+  telegramId       String?   @unique
+  telegramUsername String?
+  displayName      String?
+  role             Role      @default(CUSTOMER)
+  balanceVnd       Int       @default(0)
+  createdAt        DateTime  @default(now())
+
+  deposits Deposit[]
+  orders   Order[]
+}
+
+// Singleton row (id always 1) holding store-wide configuration editable from the admin panel.
+model Config {
+  id                  Int     @id @default(1)
+  globalMarginPercent Float   @default(15)
+  bankId              String? // VietQR bank BIN, e.g. "970436"
+  bankAccountNo       String?
+  bankAccountName     String?
+  usdtAddress         String?
+  usdtNetwork         String? @default("BEP20")
+  sourceApiKeyOverride String? // optional override of SOURCE_API_KEY env var
+  sepayWebhookApiKey  String? // must match the "Authorization: Apikey ..." header SePay sends
+}
+
+// Local cache of products pulled from the source API, enriched with markup.
+model ProductCache {
+  id              String   @id @default(cuid())
+  sourceProductId Int      @unique
+  name            String
+  basePriceVnd    Int
+  stock           Int      @default(0)
+  isActive        Boolean  @default(true)
+  raw             Json?
+  updatedAt       DateTime @updatedAt
+
+  marginOverride ProductMargin?
+  orders         Order[]
+}
+
+model ProductMargin {
+  id             String       @id @default(cuid())
+  productCacheId String       @unique
+  product        ProductCache @relation(fields: [productCacheId], references: [id], onDelete: Cascade)
+  type           MarginType
+  value          Float
+}
+
+model Deposit {
+  id           String        @id @default(cuid())
+  code         String        @unique
+  user         User          @relation(fields: [userId], references: [id])
+  userId       String
+  method       DepositMethod
+  amountVnd    Int?
+  amountUsdt   Float?
+  status       DepositStatus @default(PENDING)
+  confirmedVnd Int?
+  confirmedBy  ConfirmSource?
+  txHash       String?
+  note         String?
+  createdAt    DateTime      @default(now())
+  confirmedAt  DateTime?
+
+  bankTransaction BankTransaction?
+}
+
+// Audit log of every incoming bank-transaction webhook (e.g. from SePay), so
+// admins can see what was auto-matched and manually reconcile whatever wasn't.
+model BankTransaction {
+  id              String   @id @default(cuid())
+  provider        String // "sepay"
+  externalId      String   @unique // gateway's own transaction id, guards against duplicate webhook delivery
+  gateway         String?
+  accountNumber   String?
+  transferAmount  Int
+  content         String
+  referenceCode   String?
+  matchedDeposit  Deposit? @relation(fields: [matchedDepositId], references: [id])
+  matchedDepositId String? @unique
+  createdAt       DateTime @default(now())
+}
+
+model Order {
+  id             String       @id @default(cuid())
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  product        ProductCache @relation(fields: [productCacheId], references: [id])
+  productCacheId String
+  productName    String
+  quantity       Int
+  unitPriceVnd   Int
+  totalPriceVnd  Int
+  status         OrderStatus  @default(PENDING)
+  sourceOrderId  String?
+  failReason     String?
+  createdAt      DateTime     @default(now())
+}
+
+// Short-lived code used to link a Telegram-only account to a web (email) account.
+model LinkCode {
+  id               String   @id @default(cuid())
+  code             String   @unique
+  telegramId       String
+  telegramUsername String?
+  expiresAt        DateTime
+  used             Boolean  @default(false)
+  createdAt        DateTime @default(now())
+}
