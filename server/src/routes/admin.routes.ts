@@ -138,6 +138,12 @@ adminRouter.delete("/products/:id/margin", async (req, res) => {
   res.json({ ok: true });
 });
 
+adminRouter.put("/products/:id/hot", async (req, res) => {
+  const isHot = z.boolean().parse(req.body.isHot);
+  const product = await prisma.productCache.update({ where: { id: req.params.id }, data: { isHot } });
+  res.json({ product });
+});
+
 adminRouter.put("/products/:id/active", async (req, res) => {
   const isActive = z.boolean().parse(req.body.isActive);
   const product = await prisma.productCache.update({ where: { id: req.params.id }, data: { isActive } });

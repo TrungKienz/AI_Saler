@@ -77,6 +77,7 @@ model ProductCache {
   basePriceVnd    Int
   stock           Int      @default(0)
   isActive        Boolean  @default(true)
+  isHot           Boolean  @default(false)
   raw             Json?
   updatedAt       DateTime @updatedAt
 
@@ -139,6 +140,7 @@ model Order {
   totalPriceVnd  Int
   status         OrderStatus  @default(PENDING)
   sourceOrderId  String?
+  items          String[]     @default([]) // fulfilled item strings from the source, e.g. "email|password"
   failReason     String?
   createdAt      DateTime     @default(now())
 }

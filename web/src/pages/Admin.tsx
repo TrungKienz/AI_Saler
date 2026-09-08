@@ -250,6 +250,11 @@ function ProductsTab() {
     await load();
   }
 
+  async function toggleHot(id: string, isHot: boolean) {
+    await api.put(`/api/admin/products/${id}/hot`, { isHot });
+    await load();
+  }
+
   return (
     <div>
       <div className="mb-4 flex justify-end">
@@ -265,12 +270,13 @@ function ProductsTab() {
               <th className="px-4 py-3">Giá gốc</th>
               <th className="px-4 py-3">Giá bán</th>
               <th className="px-4 py-3">Override margin</th>
+              <th className="px-4 py-3">HOT</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {products.map((p) => (
-              <ProductRow key={p.id} product={p} onSave={saveMargin} onClear={clearMargin} />
+              <ProductRow key={p.id} product={p} onSave={saveMargin} onClear={clearMargin} onToggleHot={toggleHot} />
             ))}
           </tbody>
         </table>
@@ -283,14 +289,17 @@ function ProductRow({
   product,
   onSave,
   onClear,
+  onToggleHot,
 }: {
   product: any;
   onSave: (id: string, type: "PERCENT" | "FIXED_USD", value: number) => Promise<void>;
   onClear: (id: string) => Promise<void>;
+  onToggleHot: (id: string, isHot: boolean) => Promise<void>;
 }) {
   const [type, setType] = useState<"PERCENT" | "FIXED_USD">(product.marginOverride?.type ?? "PERCENT");
   const [value, setValue] = useState<string>(product.marginOverride?.value?.toString() ?? "");
   const [saving, setSaving] = useState(false);
+  const [hotSaving, setHotSaving] = useState(false);
 
   return (
     <tr>
@@ -311,6 +320,21 @@ function ProductRow({
             onChange={(e) => setValue(e.target.value)}
           />
         </div>
+      </td>
+      <td className="px-4 py-3">
+        <button
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+            product.isHot ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"
+          }`}
+          disabled={hotSaving}
+          onClick={async () => {
+            setHotSaving(true);
+            await onToggleHot(product.id, !product.isHot);
+            setHotSaving(false);
+          }}
+        >
+          {product.isHot ? "🔥 HOT" : "Đặt HOT"}
+        </button>
       </td>
       <td className="px-4 py-3">
         <div className="flex gap-2">

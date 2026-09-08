@@ -73,7 +73,7 @@ export async function listProductsForSale() {
     orderBy: { name: "asc" },
   });
 
-  return Promise.all(
+  const withPricing = await Promise.all(
     products.map(async (p) => ({
       id: p.id,
       sourceProductId: p.sourceProductId,
@@ -81,7 +81,14 @@ export async function listProductsForSale() {
       priceVnd: await computeSellPriceVnd(p),
       inStock: p.stock > 0,
       stock: p.stock,
+      isHot: p.isHot,
     }))
+  );
+
+  // Hot-tagged products pinned to the top, then in-stock before out-of-stock;
+  // stable sort keeps the underlying name-asc order within each group.
+  return withPricing.sort(
+    (a, b) => Number(b.isHot) - Number(a.isHot) || Number(b.inStock) - Number(a.inStock)
   );
 }
 
