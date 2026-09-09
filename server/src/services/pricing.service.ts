@@ -17,6 +17,9 @@ export async function computeSellPriceVnd(product: Priceable): Promise<number> {
     if (product.marginOverride.type === MarginType.PERCENT) {
       return roundVnd(product.basePriceVnd * (1 + product.marginOverride.value / 100));
     }
+    if (product.marginOverride.type === MarginType.FIXED_VND) {
+      return roundVnd(product.basePriceVnd + product.marginOverride.value);
+    }
     const rate = await getVndPerUsdRate();
     return roundVnd(product.basePriceVnd + product.marginOverride.value * rate);
   }

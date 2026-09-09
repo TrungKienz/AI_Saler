@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage, Product } from "../api/client";
 import { ProductCard } from "../components/ProductCard";
+import { OrderItemsList } from "../components/OrderItemsList";
 import { useAuth } from "../context/AuthContext";
 
 export function Products() {
@@ -9,6 +10,7 @@ export function Products() {
   const [loading, setLoading] = useState(true);
   const [buyingId, setBuyingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [purchasedItems, setPurchasedItems] = useState<string[]>([]);
 
   async function load() {
     setLoading(true);
@@ -33,10 +35,12 @@ export function Products() {
     }
     setBuyingId(product.id);
     setMessage(null);
+    setPurchasedItems([]);
     try {
       const { data } = await api.post("/api/orders", { productId: product.id, quantity: 1 });
       if (data.order.status === "COMPLETED") {
         setMessage({ type: "ok", text: `Mua thành công: ${data.order.productName}` });
+        setPurchasedItems(data.order.items ?? []);
       } else {
         setMessage({ type: "err", text: `Thất bại: ${data.order.failReason ?? "Lỗi không xác định"} (đã hoàn tiền)` });
       }
@@ -59,6 +63,13 @@ export function Products() {
       {message && (
         <div className={`mb-4 rounded-xl px-4 py-3 text-sm ${message.type === "ok" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"}`}>
           {message.text}
+        </div>
+      )}
+
+      {purchasedItems.length > 0 && (
+        <div className="card mb-6 p-5">
+          <h2 className="mb-3 font-semibold text-white">Nội dung đơn hàng vừa mua</h2>
+          <OrderItemsList items={purchasedItems} />
         </div>
       )}
 

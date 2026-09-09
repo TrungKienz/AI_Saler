@@ -29,6 +29,7 @@ export interface Product {
   priceVnd: number;
   inStock: boolean;
   stock: number;
+  isHot: boolean;
 }
 
 export interface Deposit {
@@ -51,6 +52,7 @@ export interface Order {
   totalPriceVnd: number;
   status: "PENDING" | "COMPLETED" | "FAILED" | "REFUNDED";
   failReason: string | null;
+  items: string[];
   createdAt: string;
 }
 

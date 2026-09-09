@@ -3,12 +3,17 @@ import { api, apiErrorMessage } from "../api/client";
 
 type Method = "VIETQR" | "USDT";
 
+function formatVnd(digits: string): string {
+  return digits ? Number(digits).toLocaleString("vi-VN") : "";
+}
+
 export function DepositModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [method, setMethod] = useState<Method>("VIETQR");
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<any | null>(null);
+  const [qrError, setQrError] = useState(false);
 
   async function submit() {
     setError(null);
@@ -45,13 +50,13 @@ export function DepositModal({ onClose, onCreated }: { onClose: () => void; onCr
               <div className="grid grid-cols-2 gap-2">
                 <button
                   className={`rounded-xl border px-3 py-2 text-sm font-semibold ${method === "VIETQR" ? "border-brand-500 bg-brand-500/10 text-brand-300" : "border-slate-700 text-slate-300"}`}
-                  onClick={() => setMethod("VIETQR")}
+                  onClick={() => { setMethod("VIETQR"); setAmount(""); }}
                 >
                   🏦 VietQR (VND)
                 </button>
                 <button
                   className={`rounded-xl border px-3 py-2 text-sm font-semibold ${method === "USDT" ? "border-brand-500 bg-brand-500/10 text-brand-300" : "border-slate-700 text-slate-300"}`}
-                  onClick={() => setMethod("USDT")}
+                  onClick={() => { setMethod("USDT"); setAmount(""); }}
                 >
                   🪙 USDT
                 </button>
@@ -62,11 +67,13 @@ export function DepositModal({ onClose, onCreated }: { onClose: () => void; onCr
               <label className="label">{method === "VIETQR" ? "Số tiền (VND)" : "Số USDT"}</label>
               <input
                 className="input"
-                type="number"
-                min={method === "VIETQR" ? 10000 : 1}
-                placeholder={method === "VIETQR" ? "vd: 100000" : "vd: 10"}
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                type="text"
+                inputMode="numeric"
+                placeholder={method === "VIETQR" ? "vd: 100.000" : "vd: 10"}
+                value={method === "VIETQR" ? formatVnd(amount) : amount}
+                onChange={(e) =>
+                  setAmount(method === "VIETQR" ? e.target.value.replace(/[^\d]/g, "") : e.target.value)
+                }
               />
             </div>
 
@@ -80,7 +87,18 @@ export function DepositModal({ onClose, onCreated }: { onClose: () => void; onCr
           <div className="flex flex-col items-center gap-3 text-center">
             {result.type === "VIETQR" ? (
               <>
-                <img src={result.qrUrl} alt="VietQR" className="w-56 rounded-xl border border-slate-800" />
+                {qrError ? (
+                  <div className="w-56 rounded-xl border border-rose-800 bg-rose-950/30 p-4 text-xs text-rose-300">
+                    Không tải được ảnh mã QR. Vui lòng chuyển khoản thủ công theo thông tin bên dưới.
+                  </div>
+                ) : (
+                  <img
+                    src={result.qrUrl}
+                    alt="VietQR"
+                    className="w-56 rounded-xl border border-slate-800"
+                    onError={() => setQrError(true)}
+                  />
+                )}
                 <p className="text-sm text-slate-300">
                   Chuyển khoản tới <b>{result.bankAccountNo}</b> ({result.bankAccountName})<br />
                   Số tiền: <b className="text-brand-400">{result.amountVnd.toLocaleString("vi-VN")}đ</b><br />

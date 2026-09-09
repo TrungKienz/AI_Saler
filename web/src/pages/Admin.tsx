@@ -240,13 +240,23 @@ function ProductsTab() {
     }
   }
 
-  async function saveMargin(id: string, type: "PERCENT" | "FIXED_USD", value: number) {
+  async function saveMargin(id: string, type: "PERCENT" | "FIXED_USD" | "FIXED_VND", value: number) {
     await api.put(`/api/admin/products/${id}/margin`, { type, value });
     await load();
   }
 
   async function clearMargin(id: string) {
     await api.delete(`/api/admin/products/${id}/margin`);
+    await load();
+  }
+
+  async function toggleHot(id: string, isHot: boolean) {
+    await api.put(`/api/admin/products/${id}/hot`, { isHot });
+    await load();
+  }
+
+  async function toggleActive(id: string, isActive: boolean) {
+    await api.put(`/api/admin/products/${id}/active`, { isActive });
     await load();
   }
 
@@ -265,12 +275,21 @@ function ProductsTab() {
               <th className="px-4 py-3">Giá gốc</th>
               <th className="px-4 py-3">Giá bán</th>
               <th className="px-4 py-3">Override margin</th>
+              <th className="px-4 py-3">HOT</th>
+              <th className="px-4 py-3">Hiển thị</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
             {products.map((p) => (
-              <ProductRow key={p.id} product={p} onSave={saveMargin} onClear={clearMargin} />
+              <ProductRow
+                key={p.id}
+                product={p}
+                onSave={saveMargin}
+                onClear={clearMargin}
+                onToggleHot={toggleHot}
+                onToggleActive={toggleActive}
+              />
             ))}
           </tbody>
         </table>
@@ -283,17 +302,23 @@ function ProductRow({
   product,
   onSave,
   onClear,
+  onToggleHot,
+  onToggleActive,
 }: {
   product: any;
-  onSave: (id: string, type: "PERCENT" | "FIXED_USD", value: number) => Promise<void>;
+  onSave: (id: string, type: "PERCENT" | "FIXED_USD" | "FIXED_VND", value: number) => Promise<void>;
   onClear: (id: string) => Promise<void>;
+  onToggleHot: (id: string, isHot: boolean) => Promise<void>;
+  onToggleActive: (id: string, isActive: boolean) => Promise<void>;
 }) {
-  const [type, setType] = useState<"PERCENT" | "FIXED_USD">(product.marginOverride?.type ?? "PERCENT");
+  const [type, setType] = useState<"PERCENT" | "FIXED_USD" | "FIXED_VND">(product.marginOverride?.type ?? "PERCENT");
   const [value, setValue] = useState<string>(product.marginOverride?.value?.toString() ?? "");
   const [saving, setSaving] = useState(false);
+  const [hotSaving, setHotSaving] = useState(false);
+  const [activeSaving, setActiveSaving] = useState(false);
 
   return (
-    <tr>
+    <tr className={product.isActive === false ? "opacity-50" : ""}>
       <td className="px-4 py-3 text-slate-100">{product.name}</td>
       <td className="px-4 py-3 text-slate-400">{product.basePriceVnd.toLocaleString("vi-VN")}đ</td>
       <td className="px-4 py-3 font-semibold text-brand-400">{product.sellPriceVnd.toLocaleString("vi-VN")}đ</td>
@@ -302,6 +327,7 @@ function ProductRow({
           <select className="input !w-auto !py-1.5" value={type} onChange={(e) => setType(e.target.value as any)}>
             <option value="PERCENT">%</option>
             <option value="FIXED_USD">+ USD</option>
+            <option value="FIXED_VND">+ VND</option>
           </select>
           <input
             className="input !w-24 !py-1.5"
@@ -311,6 +337,38 @@ function ProductRow({
             onChange={(e) => setValue(e.target.value)}
           />
         </div>
+      </td>
+      <td className="px-4 py-3">
+        <button
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+            product.isHot ? "bg-gradient-to-r from-orange-500 to-rose-500 text-white" : "border border-slate-700 text-slate-400 hover:bg-slate-800"
+          }`}
+          disabled={hotSaving}
+          onClick={async () => {
+            setHotSaving(true);
+            await onToggleHot(product.id, !product.isHot);
+            setHotSaving(false);
+          }}
+        >
+          {product.isHot ? "🔥 HOT" : "Đặt HOT"}
+        </button>
+      </td>
+      <td className="px-4 py-3">
+        <button
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+            product.isActive === false
+              ? "bg-slate-800 text-slate-400 hover:bg-slate-700"
+              : "bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+          }`}
+          disabled={activeSaving}
+          onClick={async () => {
+            setActiveSaving(true);
+            await onToggleActive(product.id, product.isActive === false);
+            setActiveSaving(false);
+          }}
+        >
+          {product.isActive === false ? "🙈 Đang ẩn" : "👁 Đang hiện"}
+        </button>
       </td>
       <td className="px-4 py-3">
         <div className="flex gap-2">
@@ -392,21 +450,29 @@ function SettingsTab() {
       </div>
 
       <div className="card p-6">
-        <h2 className="mb-4 font-semibold text-white">Nạp tiền qua VietQR</h2>
+        <h2 className="mb-4 font-semibold text-white">Nạp tiền qua VietQR (SePay tài khoản phụ)</h2>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Mã BIN ngân hàng</label>
-            <input className="input" value={config.bankId ?? ""} onChange={(e) => set("bankId", e.target.value || null)} placeholder="vd: 970436" />
+            <label className="label">Tên ngân hàng</label>
+            <input className="input" value={config.bankId ?? ""} onChange={(e) => set("bankId", e.target.value || null)} placeholder="vd: VietinBank" />
           </div>
           <div>
-            <label className="label">Số tài khoản</label>
-            <input className="input" value={config.bankAccountNo ?? ""} onChange={(e) => set("bankAccountNo", e.target.value || null)} />
+            <label className="label">Số tài khoản nhận tiền</label>
+            <input className="input" value={config.bankAccountNo ?? ""} onChange={(e) => set("bankAccountNo", e.target.value || null)} placeholder="vd: 109869589431" />
           </div>
-          <div className="col-span-2">
-            <label className="label">Tên chủ tài khoản</label>
+          <div>
+            <label className="label">Số tài khoản phụ (VA)</label>
+            <input className="input" value={config.sepayVaNumber ?? ""} onChange={(e) => set("sepayVaNumber", e.target.value || null)} placeholder="vd: BTK" />
+          </div>
+          <div>
+            <label className="label">Tên chủ tài khoản (hiển thị, tuỳ chọn)</label>
             <input className="input" value={config.bankAccountName ?? ""} onChange={(e) => set("bankAccountName", e.target.value || null)} />
           </div>
         </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Lấy 3 giá trị trên từ trang cấu hình Tài khoản phụ trên SePay (qr.sepay.vn). Nội dung chuyển khoản sẽ tự động
+          tạo theo đúng chuẩn SePay: <code>SEVQR TKP&lt;Số VA&gt; &lt;mã đơn&gt;</code>.
+        </p>
 
         <h2 className="mb-4 mt-6 font-semibold text-white">Tự động xác nhận (SePay webhook)</h2>
         <label className="label">Webhook URL (khai báo trong dashboard SePay)</label>

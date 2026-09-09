@@ -20,7 +20,7 @@ export async function createDeposit(userId: string, input: { method: DepositMeth
   const code = generateCode();
 
   if (input.method === DepositMethod.VIETQR) {
-    if (!config.bankId || !config.bankAccountNo || !config.bankAccountName) {
+    if (!config.bankId || !config.bankAccountNo || !config.sepayVaNumber) {
       throw new Error("Bank transfer is not configured yet. Contact the shop admin.");
     }
     if (!input.amountVnd || input.amountVnd < 10000) {
@@ -29,12 +29,14 @@ export async function createDeposit(userId: string, input: { method: DepositMeth
     const deposit = await prisma.deposit.create({
       data: { userId, code, method: "VIETQR", amountVnd: input.amountVnd, status: DepositStatus.PENDING },
     });
+    // Content must start with SEVQR and carry TKP<va number> so SePay's virtual
+    // sub-account matching recognizes the transaction and fires the webhook.
+    const transferContent = `SEVQR TKP${config.sepayVaNumber} ${code}`;
     const qrUrl = buildVietQrImageUrl({
-      bankId: config.bankId,
+      bankName: config.bankId,
       accountNo: config.bankAccountNo,
-      accountName: config.bankAccountName,
       amountVnd: input.amountVnd,
-      content: code,
+      content: transferContent,
     });
     return {
       deposit,
@@ -42,10 +44,10 @@ export async function createDeposit(userId: string, input: { method: DepositMeth
         type: "VIETQR" as const,
         qrUrl,
         bankAccountNo: config.bankAccountNo,
-        bankAccountName: config.bankAccountName,
+        bankAccountName: config.bankAccountName ?? config.bankId,
         amountVnd: input.amountVnd,
-        transferContent: code,
-        note: "Chuyển khoản ĐÚNG số tiền và nội dung ở trên. Ví sẽ tự động được cộng tiền trong vòng khoảng 1 phút sau khi hệ thống nhận được báo có từ ngân hàng.",
+        transferContent,
+        note: "Chuyển khoản ĐÚNG số tiền và ĐÚNG nội dung ở trên (không bỏ bớt phần nào). Ví sẽ tự động được cộng tiền trong vòng khoảng 1 phút sau khi hệ thống nhận được báo có từ ngân hàng.",
       },
     };
   }

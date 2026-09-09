@@ -42,11 +42,13 @@ export async function buyProduct(userId: string, productCacheId: string, quantit
     const apiKey = await getSourceApiKey();
     const result = await sourceApi.buy(apiKey, product.sourceProductId, quantity, "vnd");
     const sourceOrderId =
-      (result?.order?.id ?? result?.id ?? result?.order_id ?? "")?.toString() || undefined;
+      (result?.order?.id ?? result?.id ?? result?.order_id ?? result?.order?.order_group ?? "")?.toString() ||
+      undefined;
+    const items = Array.isArray(result?.items) ? result.items.map((i: unknown) => String(i)) : [];
 
     return prisma.order.update({
       where: { id: order.id },
-      data: { status: OrderStatus.COMPLETED, sourceOrderId },
+      data: { status: OrderStatus.COMPLETED, sourceOrderId, items },
     });
   } catch (err: any) {
     // Fulfilment at the source failed after we already charged the customer's
